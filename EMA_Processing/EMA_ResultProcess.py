@@ -15,6 +15,9 @@ import os
 import pandas as pd
 from tkinter import messagebox, simpledialog
 import warnings
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 warnings.filterwarnings("ignore", category=np.ComplexWarning)
 
 # --- File Selection GUI ---
@@ -47,9 +50,9 @@ if ext == ".tdms":
         # List of response channel names
         response_channels = [
         "L3-Z", "L4-Z", "L5-Z", "L6-Z", "L7-Z", "L8-Z", "L9-Z", "L10-Z", "L11-Z", "L12-Z",
-        "L13-Z", "L14-Z", "L15-Z", "L16-Z", "L17-Z", "L18-Z", "L20-Z",
+        "L13-Z", "L14-Z", "L15-Z", "L16-Z", "L17-Z", "L18-Z",
         "R3-Z", "R4-Z", "R5-Z", "R6-Z", "R7-Z", "R8-Z", "R9-Z", "R10-Z", "R11-Z", "R12-Z",
-        "R13-Z", "R14-Z", "R15-Z", "R16-Z", "R17-Z", "R18-Z", "R20-Z"
+        "R13-Z", "R14-Z", "R15-Z", "R16-Z", "R17-Z", "R18-Z",
         ]
         acc_list = []
 
@@ -123,6 +126,29 @@ elif ext == ".npz":
 else:
     raise ValueError(f"Unsupported file type: {ext}")
 
+
+# --- Sensor Coordinates (in mm) ---
+mm_to_m = lambda x: x / 1000.0
+sensor_coords_mm = {
+    "L3-Z": [7817.60, -4635.30, 635.76], "L4-Z": [9707.20, -4635.30, 736.76],
+    "L5-Z": [9021.68, -4533.70, 695.05], "L6-Z": [9377.47, -4533.70, 698.10],
+    "L7-Z": [8562.14, -3822.50, 698.39], "L8-Z": [9248.77, -3822.50, 698.34],
+    "L9-Z": [8120.68, -3060.50, 706.75], "L10-Z": [9100.08, -3060.50, 700.36],
+    "L11-Z": [7436.69, -2019.10, 714.79], "L12-Z": [8886.55, -1993.70, 703.20],
+    "L13-Z": [7483.04, -1087.78, 757.00], "L14-Z": [8369.19, -1085.70, 737.23],
+    "L15-Z": [12540.50, -2552.19, 77.44], "L16-Z": [12839.15, -2436.23, -21.22],
+    "L17-Z": [11030.13, -1027.66, 963.33], "L18-Z": [13002.27, -876.70, 193.41],
+    "R3-Z": [7817.60, 4635.30, 635.76], "R4-Z": [9707.20, 4635.30, 736.76],
+    "R5-Z": [9021.68, 4533.70, 695.05], "R6-Z": [9377.47, 4533.70, 698.10],
+    "R7-Z": [8562.14, 3822.50, 698.39], "R8-Z": [9248.77, 3822.50, 698.34],
+    "R9-Z": [8120.68, 3060.50, 706.75], "R10-Z": [9100.08, 3060.50, 700.36],
+    "R11-Z": [7436.69, 2019.10, 714.79], "R12-Z": [8886.55, 1993.70, 703.20],
+    "R13-Z": [7483.04, 1087.78, 757.00], "R14-Z": [8369.19, 1085.70, 737.23],
+    "R15-Z": [12540.50, 2552.19, 77.44], "R16-Z": [12839.15, 2436.23, -21.22],
+    "R17-Z": [11030.13, 1027.66, 963.33], "R18-Z": [13002.27, 876.70, 193.41],
+}
+dof_coords = np.array([mm_to_m(np.array(sensor_coords_mm[ch])) for ch in response_channels])
+
 '''
 # --- Plot Time-Domain Signals from experiment---
 plt.ion()
@@ -172,7 +198,7 @@ for i, acc in enumerate(acc_list):
 '''
 
 # --- Continue with EMA ---
-a = EMA.Model(H1_array, f, lower=5, upper=80, pol_order_high=30, frf_type='accelerance')
+a = EMA.Model(H1_array, f, lower=3, upper=80, pol_order_high=60, driving_point=3, frf_type='accelerance')
 a.get_poles()
 
 # --- Ask user for pole selection method ---
@@ -205,6 +231,49 @@ else:
 #Reconstruct FRFs
 frf_rec, modal_const = a.get_constants(whose_poles='own', FRF_ind='all', upper_r=False)
 a.print_modal_data()
+
+# --- 3D Mode Shape Visualization ---
+mode_shapes = a.normal_mode()
+frequencies = a.nat_freq
+
+# Define front and rear spar line indices (sensor 3–14)
+front_row_left = [0, 2, 4, 6, 8, 10]
+rear_row_left = [1, 3, 5, 7, 9, 11]
+front_row_right = [16, 18, 20, 22, 24, 26]
+rear_row_right = [17, 19, 21, 23, 25, 27]
+
+for i in range(min(10, mode_shapes.shape[1])):
+    mode = np.real(mode_shapes[:, i])
+    scale = 0.5
+
+    # Apply deformation to Z-direction
+    deformed = dof_coords.copy()
+    deformed[:, 2] += scale * mode
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # --- Original geometry (undeformed) ---
+    ax.plot(dof_coords[front_row_left, 0], dof_coords[front_row_left, 1], dof_coords[front_row_left, 2], 'k.--', label='Front Row L')
+    ax.plot(dof_coords[rear_row_left, 0], dof_coords[rear_row_left, 1], dof_coords[rear_row_left, 2], 'k.--', label='Rear Row L')
+    ax.plot(dof_coords[front_row_right, 0], dof_coords[front_row_right, 1], dof_coords[front_row_right, 2], 'k.--', label='Front Row R')
+    ax.plot(dof_coords[rear_row_right, 0], dof_coords[rear_row_right, 1], dof_coords[rear_row_right, 2], 'k.--', label='Rear Row R')
+
+    # --- Deformed geometry ---
+    ax.plot(deformed[front_row_left, 0], deformed[front_row_left, 1], deformed[front_row_left, 2], 'r-', label='Deformed Front L')
+    ax.plot(deformed[rear_row_left, 0], deformed[rear_row_left, 1], deformed[rear_row_left, 2], 'g-', label='Deformed Rear L')
+    ax.plot(deformed[front_row_right, 0], deformed[front_row_right, 1], deformed[front_row_right, 2], 'r-', label='Deformed Front R')
+    ax.plot(deformed[rear_row_right, 0], deformed[rear_row_right, 1], deformed[rear_row_right, 2], 'g-', label='Deformed Rear R')
+
+    # --- Plot settings ---
+    ax.set_title(f"Mode Shape {i+1} at {frequencies[i]:.2f} Hz")
+    ax.set_xlabel("X [m]")
+    ax.set_ylabel("Y [m]")
+    ax.set_zlabel("Z [m]")
+    ax.legend()
+    plt.tight_layout()
+    plt.show()
+
 
 freq_a = a.freq
 
@@ -248,21 +317,9 @@ plt.show()
 #But MAC can also be used to compare between experiment and FEM
 #Or it can just be used to check & reconstruct experimental result FRFw
 
-mode_shapes = a.mode_shapes  # Shape: (num_dofs, num_modes)
-
-# Transpose for easier access: (modes, DOFs)
-modes = mode_shapes.T
-
-plt.figure(figsize=(12, 6))
-for i, mode in enumerate(modes):
-    plt.plot(np.abs(mode), label=f'Mode {i+1}')
-plt.xlabel("Sensor Index (DOFs)")
-plt.ylabel("Mode Shape Magnitude")
-plt.title("Mode Shapes (Absolute Values)")
-plt.grid(True)
-plt.legend()
-plt.tight_layout()
-plt.show()
+a.A.shape
+a.A[:, 0]
+plt.plot(a.normal_mode()[:, :3]);
 
 # --- Save Reconstructed FRF and Frequency Vector for Later Use ---
 save_dir = r"C:\Nin Folder\RVC\IRIS-T\GVT Processing\src\VT_processing\Reconstructed_FRF"
@@ -276,10 +333,6 @@ np.savez_compressed(
 )
 
 print(f"\nReconstructed FRF and frequencies saved to:\n{save_path}")
-
-
-
-
 
 
 
