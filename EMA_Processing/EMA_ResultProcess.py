@@ -236,44 +236,43 @@ a.print_modal_data()
 mode_shapes = a.normal_mode()
 frequencies = a.nat_freq
 
-# Define front and rear spar line indices (sensor 3–14)
-front_row_left = [0, 2, 4, 6, 8, 10]
-rear_row_left = [1, 3, 5, 7, 9, 11]
-front_row_right = [16, 18, 20, 22, 24, 26]
-rear_row_right = [17, 19, 21, 23, 25, 27]
+spanwise = 12  # total front/rear pairs
+chordwise = 2
 
-for i in range(min(10, mode_shapes.shape[1])):
+sensor_indices = [
+    [0, 1], [2, 3], [4, 5], [6, 7], [8, 9], [10, 11],    # Left wing
+    [26, 27], [24, 25], [22, 23], [20, 21], [18, 19], [16, 17]  # Right wing
+]
+
+for i in range(min(3, mode_shapes.shape[1])):
     mode = np.real(mode_shapes[:, i])
     scale = 0.5
-
-    # Apply deformation to Z-direction
     deformed = dof_coords.copy()
     deformed[:, 2] += scale * mode
+    # Create structured grid (X, Y, Z)
+    X, Y, Z = [], [], []
+    for pair in sensor_indices:
+        row_x = [deformed[pair[0], 0], deformed[pair[1], 0]]
+        row_y = [deformed[pair[0], 1], deformed[pair[1], 1]]
+        row_z = [deformed[pair[0], 2], deformed[pair[1], 2]]
+        X.append(row_x)
+        Y.append(row_y)
+        Z.append(row_z)
+
+    X = np.array(X)
+    Y = np.array(Y)
+    Z = np.array(Z)
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-
-    # --- Original geometry (undeformed) ---
-    ax.plot(dof_coords[front_row_left, 0], dof_coords[front_row_left, 1], dof_coords[front_row_left, 2], 'k.--', label='Front Row L')
-    ax.plot(dof_coords[rear_row_left, 0], dof_coords[rear_row_left, 1], dof_coords[rear_row_left, 2], 'k.--', label='Rear Row L')
-    ax.plot(dof_coords[front_row_right, 0], dof_coords[front_row_right, 1], dof_coords[front_row_right, 2], 'k.--', label='Front Row R')
-    ax.plot(dof_coords[rear_row_right, 0], dof_coords[rear_row_right, 1], dof_coords[rear_row_right, 2], 'k.--', label='Rear Row R')
-
-    # --- Deformed geometry ---
-    ax.plot(deformed[front_row_left, 0], deformed[front_row_left, 1], deformed[front_row_left, 2], 'r-', label='Deformed Front L')
-    ax.plot(deformed[rear_row_left, 0], deformed[rear_row_left, 1], deformed[rear_row_left, 2], 'g-', label='Deformed Rear L')
-    ax.plot(deformed[front_row_right, 0], deformed[front_row_right, 1], deformed[front_row_right, 2], 'r-', label='Deformed Front R')
-    ax.plot(deformed[rear_row_right, 0], deformed[rear_row_right, 1], deformed[rear_row_right, 2], 'g-', label='Deformed Rear R')
-
-    # --- Plot settings ---
+    surf = ax.plot_surface(X, Y, Z, cmap='jet', edgecolor='k')
+    fig.colorbar(surf, ax=ax, label="Z Deflection")
     ax.set_title(f"Mode Shape {i+1} at {frequencies[i]:.2f} Hz")
     ax.set_xlabel("X [m]")
     ax.set_ylabel("Y [m]")
     ax.set_zlabel("Z [m]")
-    ax.legend()
     plt.tight_layout()
     plt.show()
-
 
 freq_a = a.freq
 
