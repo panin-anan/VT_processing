@@ -198,7 +198,7 @@ for i, acc in enumerate(acc_list):
 '''
 
 # --- Continue with EMA ---
-a = EMA.Model(H1_array, f, lower=3, upper=80, pol_order_high=60, driving_point=3, frf_type='accelerance')
+a = EMA.Model(H1_array, f, lower=3, upper=80, pol_order_high=120, driving_point=3, frf_type='accelerance')
 a.get_poles()
 
 # --- Ask user for pole selection method ---
@@ -240,11 +240,12 @@ spanwise = 12  # total front/rear pairs
 chordwise = 2
 
 sensor_indices = [
-    [0, 1], [2, 3], [4, 5], [6, 7], [8, 9], [10, 11],    # Left wing
+    [0, 1], [2, 3], [4, 5], [6, 7], [8, 9], [10, 11],   # Left wing
     [26, 27], [24, 25], [22, 23], [20, 21], [18, 19], [16, 17]  # Right wing
 ]
 
-for i in range(min(3, mode_shapes.shape[1])):
+
+for i in range(min(10, mode_shapes.shape[1])):
     mode = np.real(mode_shapes[:, i])
     scale = 0.5
     deformed = dof_coords.copy()
@@ -268,9 +269,9 @@ for i in range(min(3, mode_shapes.shape[1])):
     surf = ax.plot_surface(X, Y, Z, cmap='jet', edgecolor='k')
     fig.colorbar(surf, ax=ax, label="Z Deflection")
     ax.set_title(f"Mode Shape {i+1} at {frequencies[i]:.2f} Hz")
-    ax.set_xlabel("X [m]")
-    ax.set_ylabel("Y [m]")
-    ax.set_zlabel("Z [m]")
+    ax.set_xlabel("X [magnitude]")
+    ax.set_ylabel("Y [magnitude]")
+    ax.set_zlabel("Z [magnitude]")
     plt.tight_layout()
     plt.show()
 
