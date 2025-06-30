@@ -18,6 +18,7 @@ import warnings
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+import matplotlib.lines as mlines
 warnings.filterwarnings("ignore", category=np.ComplexWarning)
 
 # --- File Selection GUI ---
@@ -250,28 +251,48 @@ for i in range(min(10, mode_shapes.shape[1])):
     scale = 0.5
     deformed = dof_coords.copy()
     deformed[:, 2] += scale * mode
-    # Create structured grid (X, Y, Z)
-    X, Y, Z = [], [], []
+
+    X_def, Y_def, Z_def = [], [], []
+    X_und, Y_und, Z_und = [], [], []
+
     for pair in sensor_indices:
-        row_x = [deformed[pair[0], 0], deformed[pair[1], 0]]
-        row_y = [deformed[pair[0], 1], deformed[pair[1], 1]]
-        row_z = [deformed[pair[0], 2], deformed[pair[1], 2]]
-        X.append(row_x)
-        Y.append(row_y)
-        Z.append(row_z)
+        # Deformed
+        row_x_def = [deformed[pair[0], 0], deformed[pair[1], 0]]
+        row_y_def = [deformed[pair[0], 1], deformed[pair[1], 1]]
+        row_z_def = [deformed[pair[0], 2], deformed[pair[1], 2]]
+        X_def.append(row_x_def)
+        Y_def.append(row_y_def)
+        Z_def.append(row_z_def)
 
-    X = np.array(X)
-    Y = np.array(Y)
-    Z = np.array(Z)
+        # Undeformed (original)
+        row_x_und = [dof_coords[pair[0], 0], dof_coords[pair[1], 0]]
+        row_y_und = [dof_coords[pair[0], 1], dof_coords[pair[1], 1]]
+        row_z_und = [dof_coords[pair[0], 2], dof_coords[pair[1], 2]]
+        X_und.append(row_x_und)
+        Y_und.append(row_y_und)
+        Z_und.append(row_z_und)
 
+    # Convert to array
+    X_def, Y_def, Z_def = np.array(X_def), np.array(Y_def), np.array(Z_def)
+    X_und, Y_und, Z_und = np.array(X_und), np.array(Y_und), np.array(Z_und)
+
+    # Plot
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    surf = ax.plot_surface(X, Y, Z, cmap='jet', edgecolor='k')
-    fig.colorbar(surf, ax=ax, label="Z Deflection")
+    ax.plot_surface(X_def, Y_def, Z_def, cmap='jet', edgecolor='k', alpha=0.7)
+
+    for x, y, z in zip(X_und, Y_und, Z_und):
+        ax.plot(x, y, z, 'k--', linewidth=1)
+
+    # Custom legend
+    undeformed_line = mlines.Line2D([], [], color='black', linestyle='--', label='Undeformed')
+    deformed_patch = mlines.Line2D([], [], color='blue', linestyle='-', label='Deformed (surface)')
+
+    ax.legend(handles=[undeformed_line, deformed_patch])
     ax.set_title(f"Mode Shape {i+1} at {frequencies[i]:.2f} Hz")
-    ax.set_xlabel("X [magnitude]")
-    ax.set_ylabel("Y [magnitude]")
-    ax.set_zlabel("Z [magnitude]")
+    ax.set_xlabel("X [m]")
+    ax.set_ylabel("Y [m]")
+    ax.set_zlabel("Z [m]")
     plt.tight_layout()
     plt.show()
 
