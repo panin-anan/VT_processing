@@ -328,7 +328,7 @@ plt.title("FRF Phase up to 80 Hz")
 plt.tight_layout()
 plt.show()
 
-autoMAC = a.autoMAC()
+autoMAC = EMA.tools.MAC(a.A, a.A)
 plt.matshow(np.abs(autoMAC), cmap="viridis")
 plt.colorbar(label='MAC Value')
 plt.show()

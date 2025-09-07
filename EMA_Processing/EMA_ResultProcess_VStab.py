@@ -52,7 +52,7 @@ if ext == ".tdms":
         "L3-Z", "L4-Z", "L5-Z", "L6-Z", "L7-Z", "L8-Z", "L9-Z", "L10-Z", "L11-Z", "L12-Z",
         "L13-Z", "L14-Z", "L15-Z", "L16-Z", "L17-Z", "L18-Z",
         "R3-Z", "R4-Z", "R5-Z", "R6-Z", "R7-Z", "R8-Z", "R9-Z", "R10-Z", "R11-Z", "R12-Z",
-        "R13-Z", "R14-Z", "R15-Z", "R16-Z", "R17-Z", "R18-Z", "V1-Z", "V2-Z", "V3-Z", "V4-Z"
+        "R13-Z", "R14-Z", "R15-Z", "R16-Z", "R17-Z", "R18-Z", "V1-Y", "V2-Y", "V3-Y", "V4-Y"
         ]
         acc_list = []
 
@@ -243,8 +243,7 @@ chordwise = 2
 
 sensor_indices = [
     [0, 1], [2, 3], [4, 5], [6, 7], [8, 9], [10, 11], [12, 13], [14, 15],   # Left wing
-    [28, 29], [30, 31], [26, 27], [24, 25], [22, 23], [20, 21], [18, 19], [16, 17],
-    [32, 33], [34, 35]  # Right wing
+    [28, 29], [30, 31], [26, 27], [24, 25], [22, 23], [20, 21], [18, 19], [16, 17],  # Right wing
 ]
 
 
@@ -278,6 +277,105 @@ for i in range(min(10, mode_shapes.shape[1])):
     plt.tight_layout()
     plt.show()
 
+
+# --- Combined Vertical Fin + Horizontal Stabilizer (L&R) Mode Shape Visualization ---
+
+# Vertical Fin
+vfin_channels = ["V1-Y", "V2-Y", "V3-Y", "V4-Y"]
+vfin_indices = [response_channels.index(ch) for ch in vfin_channels]
+vfin_coords = dof_coords[vfin_indices]
+vfin_grid_idx = np.array([[0, 1], [2, 3]])  # V1-V2 (bottom), V3-V4 (top)
+
+# Horizontal Stabilizer: carefully ordered [rear L to R], [front L to R]
+hstab_channels_ordered = ["L15-Z", "L16-Z", "R16-Z", "R15-Z", "L17-Z", "L18-Z", "R18-Z", "R17-Z"]
+hstab_indices = [response_channels.index(ch) for ch in hstab_channels_ordered]
+hstab_coords = dof_coords[hstab_indices]
+
+# Reshape as 2x4 surface: rear row [0-3], front row [4-7]
+hstab_grid_idx = np.array([[0, 1, 2, 3], [4, 5, 6, 7]])
+
+for i in range(min(12, mode_shapes.shape[1])):
+    mode = np.real(mode_shapes[:, i])
+    scale = 3.0
+
+    # --- Deform vertical fin ---
+    def_vfin = vfin_coords.copy()
+    def_vfin[:, 1] += scale * mode[vfin_indices]
+    X_v = np.array([[def_vfin[vfin_grid_idx[i, j], 0] for j in range(2)] for i in range(2)])
+    Y_v = np.array([[def_vfin[vfin_grid_idx[i, j], 1] for j in range(2)] for i in range(2)])
+    Z_v = np.array([[def_vfin[vfin_grid_idx[i, j], 2] for j in range(2)] for i in range(2)])
+
+    # 👉 Print Y_v for this frequency
+    print(f"\nMode {i+1} at {frequencies[i]:.2f} Hz:")
+    print(Y_v)
+
+    # --- Deform horizontal stabilizer ---
+    def_hstab = hstab_coords.copy()
+    def_hstab[:, 2] += scale * mode[hstab_indices]
+    X_h = np.array([[def_hstab[hstab_grid_idx[i, j], 0] for j in range(4)] for i in range(2)])
+    Y_h = np.array([[def_hstab[hstab_grid_idx[i, j], 1] for j in range(4)] for i in range(2)])
+    Z_h = np.array([[def_hstab[hstab_grid_idx[i, j], 2] for j in range(4)] for i in range(2)])
+
+    # --- Plot ---
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    surf_v = ax.plot_surface(X_v, Y_v, Z_v, cmap='viridis', edgecolor='k', alpha=0.9)
+    surf_h = ax.plot_surface(X_h, Y_h, Z_h, cmap='plasma', edgecolor='k', alpha=0.9)
+
+    ax.set_title(f"Combined Mode Shape {i+1} at {frequencies[i]:.2f} Hz")
+    ax.set_xlabel("X [m]")
+    ax.set_ylabel("Y [m]")
+    ax.set_zlabel("Z [m]")
+    ax.view_init(elev=25, azim=135)  # Adjust view if needed
+
+    mappable = plt.cm.ScalarMappable(cmap='plasma')
+    fig.colorbar(mappable, ax=ax, shrink=0.6, label="Z Deflection [m]")
+
+    plt.tight_layout()
+    plt.show()
+
+
+# --- Horizontal Stabilizer (L&R) Mode Shape Visualization Only ---
+
+# Horizontal Stabilizer: carefully ordered [rear L to R], [front L to R]
+hstab_channels_ordered = ["L15-Z", "L16-Z", "R16-Z", "R15-Z", "L17-Z", "L18-Z", "R18-Z", "R17-Z"]
+hstab_indices = [response_channels.index(ch) for ch in hstab_channels_ordered]
+hstab_coords = dof_coords[hstab_indices]
+
+# Reshape as 2x4 surface: rear row [0-3], front row [4-7]
+hstab_grid_idx = np.array([[0, 1, 2, 3], [4, 5, 6, 7]])
+
+for i in range(min(3, mode_shapes.shape[1])):
+    mode = np.real(mode_shapes[:, i])
+    scale = 0.5
+
+    # --- Deform horizontal stabilizer ---
+    def_hstab = hstab_coords.copy()
+    def_hstab[:, 2] += scale * mode[hstab_indices]
+    X_h = np.array([[def_hstab[hstab_grid_idx[i, j], 0] for j in range(4)] for i in range(2)])
+    Y_h = np.array([[def_hstab[hstab_grid_idx[i, j], 1] for j in range(4)] for i in range(2)])
+    Z_h = np.array([[def_hstab[hstab_grid_idx[i, j], 2] for j in range(4)] for i in range(2)])
+
+    # --- Plot ---
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    surf_h = ax.plot_surface(X_h, Y_h, Z_h, cmap='plasma', edgecolor='k', alpha=0.9)
+
+    ax.set_title(f"Horizontal Stabilizer Mode Shape {i+1} at {frequencies[i]:.2f} Hz")
+    ax.set_xlabel("X [m]")
+    ax.set_ylabel("Y [m]")
+    ax.set_zlabel("Z [m]")
+    ax.view_init(elev=25, azim=135)
+
+    mappable = plt.cm.ScalarMappable(cmap='plasma')
+    fig.colorbar(mappable, ax=ax, shrink=0.6, label="Z Deflection [m]")
+
+    plt.tight_layout()
+    plt.show()
+
+
 freq_a = a.freq
 
 
@@ -310,10 +408,146 @@ plt.title("FRF Phase up to 80 Hz")
 plt.tight_layout()
 plt.show()
 
-autoMAC = a.autoMAC()
+autoMAC = EMA.tools.MAC(a.A, a.A)
 plt.matshow(np.abs(autoMAC), cmap="viridis")
 plt.colorbar(label='MAC Value')
 plt.show()
+
+# ================== UNV EXPORT (Uz only, DS-15 nodes) — SINGLE BLOCK ==================
+# Requires: pip install pyuff
+# Assumes these already exist from your script:
+# - file_path (path of the input data file you processed)
+# - response_channels (list of channel names in order)
+# - dof_coords (Nx3 coordinates array for those channels, in meters unless you scale below)
+# - a.normal_mode() and a.nat_freq from sdypy.EMA (mode shapes & frequencies)
+
+# ================== UNV EXPORT (DS-15 nodes + DS-55 modes; Uz-only) ==================
+# Modifications from your block:
+# - DS-15 uses DENSE arrays aligned with node_nums (not keyed by node id).
+# - DS-55 written per SDRL spec: 3-DOF translation vector declared (NDV=3),
+#   Specific Data Type = 8 (Displacement), Data Type = 2 (Real).
+# - r1/r2 zeros, r3 = Uz; arrays are DENSE (len == len(node_nums)).
+# - No DS-164 (units). Set the correct Units in NVH or scale LENGTH_SCALE here.
+
+import os
+import numpy as np
+import pyuff
+
+# ---- Output folder (fixed) ----
+save_dir = r"C:\Nin Folder\RVC\IRIS-T\GVT Processing\src\VT_processing\MAC_Compare_File"
+os.makedirs(save_dir, exist_ok=True)
+base_name = os.path.splitext(os.path.basename(file_path))[0]
+unv_path = os.path.join(save_dir, f"{base_name}_exp_modes.unv")
+
+# ---- Build node IDs (contiguous 1..N) ----
+Nch = len(response_channels)
+node_ids = np.arange(1, Nch + 1, dtype=int)  # 1..N
+
+# ---- OPTIONAL length scaling (set to 1000.0 if your FE model is in mm) ----
+LENGTH_SCALE = 1.0  # meters -> meters. Use 1000.0 for meters -> millimeters
+
+# ---- DS-15 geometry (DENSE arrays aligned with node_nums) ----
+X = (dof_coords[:, 0] * LENGTH_SCALE).astype(float)
+Y = (dof_coords[:, 1] * LENGTH_SCALE).astype(float)
+Z = (dof_coords[:, 2] * LENGTH_SCALE).astype(float)
+
+export_cs = np.zeros_like(node_ids, dtype=int)  # 0 = global
+def_cs    = np.zeros_like(node_ids, dtype=int)  # 0 = global
+disp_cs   = np.zeros_like(node_ids, dtype=int)  # 0 = global
+color     = np.zeros_like(node_ids, dtype=int)  # 0 = default
+
+# Use explicit dict to be compatible across pyuff versions
+ds15 = {
+    "type": 15,
+    "node_nums": node_ids,   # list/array of node ids present
+    "x": X, "y": Y, "z": Z,  # DENSE arrays, same length as node_nums
+    "export_cs": export_cs, "def_cs": def_cs, "disp_cs": disp_cs, "color": color
+}
+
+# ---- Experimental mode shapes (Uz only) ----
+mode_shapes = a.normal_mode()         # shape: (Nch, Nmodes)
+frequencies = np.asarray(a.nat_freq)  # Hz
+
+uff_sets = [ds15]
+
+for m_idx in range(mode_shapes.shape[1]):
+    # Real-valued modal vector at measured DOFs
+    phi = np.real(mode_shapes[:, m_idx]).astype(float)  # (Nch,)
+    # DENSE component arrays per node (length == len(node_ids))
+    r1 = np.zeros_like(phi)  # Ux
+    r2 = np.zeros_like(phi)  # Uy
+    r3 = phi                 # Uz
+
+    # Prefer prepare_55 (enforces SDRL record layout). Fall back to dict if needed.
+    try:
+        ds55 = pyuff.prepare_55(
+            # ID lines (helpful labels)
+            id1=f"Mode {m_idx+1}",
+            id2="EMA",
+            id3="Displacement shapes (Uz only)",
+            id4="LoadCase 1",
+            id5="",
+
+            # Data definition (SDRL DS-55)
+            model_type=1,           # 1 = Structural
+            analysis_type=2,        # 2 = Normal modes
+            data_ch=2,              # 2 = 3-DOF translation vector (UX,UY,UZ)
+            spec_data_type=8,       # 8 = Displacement
+            data_type=2,            # 2 = Real
+            n_data_per_node=3,      # NDV = 3 (components per node)
+
+            # Mode info
+            load_case=1,
+            mode_n=m_idx + 1,
+            freq=float(frequencies[m_idx]),
+            modal_m=0.0,
+            modal_damp_vis=0.0,
+            modal_damp_his=0.0,
+
+            # Per-node data (dense, aligned with node_nums)
+            node_nums=node_ids.astype(int),
+            r1=r1, r2=r2, r3=r3
+        )
+    except Exception:
+        # Fallback dict for older pyuff variants
+        ds55 = {
+            "type": 55,
+            "id1": f"Mode {m_idx+1}",
+            "id2": "EMA",
+            "id3": "Displacement shapes (Uz only)",
+            "id4": "LoadCase 1",
+            "id5": "",
+            "model_type": 1,
+            "analysis_type": 2,
+            "data_ch": 2,            # 3-DOF translation vector
+            "spec_data_type": 8,     # Displacement
+            "data_type": 2,          # Real
+            "n_data_per_node": 3,    # NDV = 3
+            "load_case": 1,
+            "mode_n": m_idx + 1,
+            "freq": float(frequencies[m_idx]),
+            "modal_m": 0.0,
+            "modal_damp_vis": 0.0,
+            "modal_damp_his": 0.0,
+            "node_nums": node_ids,
+            "r1": r1, "r2": r2, "r3": r3
+        }
+
+    uff_sets.append(ds55)
+
+# ---- Write UNV robustly (constructor with filename first) ----
+try:
+    uff = pyuff.UFF(unv_path)
+    uff.write_sets(uff_sets)
+except TypeError:
+    uff = pyuff.UFF()
+    uff.write_sets(uff_sets, unv_path)
+
+print(f"\nUNV written (DS-15 nodes + DS-55 modes; Uz-only in 3-DOF vector):\n{unv_path}\n"
+      "In NVH MAC: set Custom DOF = UZ, map by coordinates, and set Units/tolerance appropriately.")
+# ================== END UNV EXPORT ==================
+
+
 
 #Note: close to 1.0 means experimental modes and the selected/reconstructed FRF coincide
 #In this case, it is only checking for mode duplicates/orthogonality
