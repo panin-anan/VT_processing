@@ -437,7 +437,7 @@ import pyuff
 save_dir = r"C:\Nin Folder\RVC\IRIS-T\GVT Processing\src\VT_processing\MAC_Compare_File"
 os.makedirs(save_dir, exist_ok=True)
 base_name = os.path.splitext(os.path.basename(file_path))[0]
-unv_path = os.path.join(save_dir, f"{base_name}_exp_modes_test2.unv")
+unv_path = os.path.join(save_dir, f"{base_name}_exp_modes_AllSensor_V2_Outphase.unv")
 
 # ---- Build node IDs (contiguous 1..N) ----
 Nch = len(response_channels)
