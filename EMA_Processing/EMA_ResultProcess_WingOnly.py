@@ -469,6 +469,20 @@ print(f"\nUNV written (DS-15 nodes + DS-55 modes; Uz-only in 3-DOF vector):\n{un
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #Note: close to 1.0 means experimental modes and the selected/reconstructed FRF coincide
 #In this case, it is only checking for mode duplicates/orthogonality
 #But MAC can also be used to compare between experiment and FEM
