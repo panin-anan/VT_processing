@@ -44,9 +44,15 @@ if ext == ".tdms":
         #print(tdms_file.groups())  # List all groups
         #print(tdms_file["Group1"].channels())  # List all channels in Group1
         group1 = tdms_file["Group1"]
+        print("Group1 object:")
+        print(group1)
+
+        print("\nChannels in Group1:")
+        for ch in group1.channels():
+            print(" -", ch.name)
         t = group1["Time"][:]
         force = group1["ILF-Z"][:]
-
+        print(force)
         # List of response channel names
         response_channels = [
         "L3-Z", "L4-Z", "L5-Z", "L6-Z", "L7-Z", "L8-Z", "L9-Z", "L10-Z", "L11-Z", "L12-Z",
